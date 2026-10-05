@@ -85,6 +85,16 @@
         <CalendarAccounts></CalendarAccounts>
       </div>
 
+      <!-- Scheduled Events Section -->
+      <div class="tw-flex tw-flex-col tw-gap-5">
+        <div
+          class="tw-text-xl tw-font-medium tw-text-dark-green sm:tw-text-2xl"
+        >
+          Scheduled events
+        </div>
+        <ScheduleCalendarSelector />
+      </div>
+
       <!-- Permissions Section -->
       <div class="tw-flex tw-flex-col tw-gap-5">
         <div
@@ -192,6 +202,7 @@
 import { mapState, mapActions } from "vuex"
 import { _delete, patch, isPhone, get } from "@/utils"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
+import ScheduleCalendarSelector from "@/components/settings/ScheduleCalendarSelector.vue"
 
 export default {
   name: "Settings",
@@ -200,7 +211,7 @@ export default {
     title: "Settings - Timeful",
   },
 
-  components: { CalendarAccounts },
+  components: { CalendarAccounts, ScheduleCalendarSelector },
 
   data: () => ({
     dialog: false,

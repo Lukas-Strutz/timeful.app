@@ -32,6 +32,7 @@ func InitUser(router *gin.RouterGroup) {
 	userRouter.GET("/profile", getProfile)
 	userRouter.PATCH("/name", updateName)
 	userRouter.PATCH("/calendar-options", updateCalendarOptions)
+	userRouter.PATCH("/schedule-calendar", updateScheduleCalendar)
 	userRouter.GET("/events", getEvents)
 	userRouter.POST("/events/:eventId/set-folder", setEventFolder)
 	userRouter.GET("/calendars", getCalendars)
@@ -611,6 +612,61 @@ func removeCalendarAccount(c *gin.Context) {
 			},
 		}},
 	})
+
+	// Stop adding scheduled events to a calendar of the removed account
+	if authUser.ScheduleCalendar != nil && authUser.ScheduleCalendar.CalendarAccountKey == calendarAccountKey {
+		db.UsersCollection.UpdateByID(context.Background(), authUser.Id, bson.M{
+			"$unset": bson.M{"scheduleCalendar": ""},
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+// @Summary Sets the calendar that scheduled events are automatically added to
+// @Description Pass an empty calendarAccountKey to stop adding scheduled events to a calendar
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param payload body object{calendarAccountKey=string,calendarId=string} true "Calendar account key and the id of one of its calendars"
+// @Success 200
+// @Router /user/schedule-calendar [patch]
+func updateScheduleCalendar(c *gin.Context) {
+	payload := struct {
+		CalendarAccountKey string `json:"calendarAccountKey"`
+		CalendarId         string `json:"calendarId"`
+	}{}
+	if err := c.BindJSON(&payload); err != nil {
+		return
+	}
+
+	authUser := utils.GetAuthUser(c)
+
+	if payload.CalendarAccountKey == "" {
+		_, err := db.UsersCollection.UpdateByID(context.Background(), authUser.Id, bson.M{
+			"$unset": bson.M{"scheduleCalendar": ""},
+		})
+		if err != nil {
+			logger.StdErr.Panicln(err)
+		}
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
+	if !isValidScheduleCalendar(authUser, payload.CalendarAccountKey, payload.CalendarId) {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: errs.InvalidCalendar})
+		return
+	}
+
+	_, err := db.UsersCollection.UpdateByID(context.Background(), authUser.Id, bson.M{
+		"$set": bson.M{"scheduleCalendar": models.ScheduleCalendar{
+			CalendarAccountKey: payload.CalendarAccountKey,
+			CalendarId:         payload.CalendarId,
+		}},
+	})
+	if err != nil {
+		logger.StdErr.Panicln(err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{})
 }

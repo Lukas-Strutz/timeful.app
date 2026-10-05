@@ -299,6 +299,13 @@
               :event.sync="event"
               :canEdit="event.ownerId != 0 && canEdit"
             />
+
+            <!-- Scheduled time -->
+            <ScheduledEventBanner
+              :event="event"
+              :canEdit="canEdit"
+              @refreshEvent="refreshEvent"
+            />
           </div>
 
           <!-- Calendar -->
@@ -552,6 +559,7 @@ import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/Mar
 import InvitationDialog from "@/components/groups/InvitationDialog.vue"
 import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
+import ScheduledEventBanner from "@/components/event/ScheduledEventBanner.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 import CarbonAd from "@/components/event/CarbonAd.vue"
 import PubliftAd from "@/components/event/PubliftAd.vue"
@@ -577,6 +585,7 @@ export default {
     InvitationDialog,
     HelpDialog,
     EventDescription,
+    ScheduledEventBanner,
     FormerlyKnownAs,
     CarbonAd,
     PubliftAd,

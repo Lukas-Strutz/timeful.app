@@ -25,6 +25,8 @@ const (
 	TooManyRequests       string = "too-many-requests"
 	EmailNotAllowed       string = "email-not-allowed"
 	EmailSendFailed       string = "email-send-failed"
+	InvalidCalendar       string = "invalid-calendar"
+	EventNotScheduled     string = "event-not-scheduled"
 )
 
 type GoogleAPIError struct {

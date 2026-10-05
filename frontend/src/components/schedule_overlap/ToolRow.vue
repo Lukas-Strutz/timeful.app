@@ -118,7 +118,25 @@
               </v-btn>
             </template>
             <v-list dense>
-              <v-list-item @click="(e) => $emit('confirmScheduleEvent', true)">
+              <v-list-item
+                @click="(e) => $emit('confirmScheduleEvent', 'save')"
+              >
+                <v-icon class="tw-mr-2 tw-flex-none" small>{{
+                  scheduleCalendarName
+                    ? "mdi-calendar-plus"
+                    : "mdi-content-save"
+                }}</v-icon>
+                <v-list-item-content>
+                  <v-list-item-title>{{
+                    scheduleCalendarName
+                      ? `Add to "${scheduleCalendarName}"`
+                      : "Save"
+                  }}</v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+              <v-list-item
+                @click="(e) => $emit('confirmScheduleEvent', 'google')"
+              >
                 <v-img
                   src="@/assets/gcal_logo.png"
                   class="tw-mr-2 tw-flex-none"
@@ -129,7 +147,9 @@
                   <v-list-item-title>Google Calendar</v-list-item-title>
                 </v-list-item-content>
               </v-list-item>
-              <v-list-item @click="(e) => $emit('confirmScheduleEvent', false)">
+              <v-list-item
+                @click="(e) => $emit('confirmScheduleEvent', 'outlook')"
+              >
                 <v-img
                   src="@/assets/outlook_logo.svg"
                   class="tw-mr-2 tw-flex-none"
@@ -167,7 +187,7 @@
 <script>
 import TimezoneSelector from "./TimezoneSelector.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
-import { isPhone } from "@/utils"
+import { isPhone, getScheduleCalendarName } from "@/utils"
 import Advertisement from "../event/Advertisement.vue"
 import ExpandableSection from "../ExpandableSection.vue"
 import EventOptions from "./EventOptions.vue"
@@ -237,6 +257,10 @@ export default {
   computed: {
     ...mapState(["authUser"]),
     ...mapGetters(["isPremiumUser"]),
+    /** Calendar that scheduling adds the event to, if the owner set one */
+    scheduleCalendarName() {
+      return this.isOwner ? getScheduleCalendarName(this.authUser) : null
+    },
     isPhone() {
       return isPhone(this.$vuetify)
     },

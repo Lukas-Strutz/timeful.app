@@ -91,6 +91,9 @@ type Event struct {
 	ScheduledEvent  *CalendarEvent `json:"scheduledEvent" bson:"scheduledEvent,omitempty"`
 	CalendarEventId string         `json:"calendarEventId" bson:"calendarEventId,omitempty"`
 
+	// Where the scheduled event was written in the owner's calendar
+	ScheduledEventCalendarRef *ScheduledEventCalendarRef `json:"-" bson:"scheduledEventCalendarRef,omitempty"`
+
 	// Remindees
 	Remindees *[]Remindee `json:"remindees" bson:"remindees,omitempty"`
 

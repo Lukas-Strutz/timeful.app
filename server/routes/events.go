@@ -46,6 +46,9 @@ func InitEvents(router *gin.RouterGroup) {
 	eventRouter.DELETE("/:eventId", middleware.AuthRequired(), deleteEvent)
 	eventRouter.POST("/:eventId/duplicate", middleware.AuthRequired(), duplicateEvent)
 	eventRouter.POST("/:eventId/archive", middleware.AuthRequired(), archiveEvent)
+	eventRouter.POST("/:eventId/schedule", scheduleEvent)
+	eventRouter.DELETE("/:eventId/schedule", unscheduleEvent)
+	eventRouter.GET("/:eventId/scheduled.ics", middleware.LimitEventLookupMisses(), getScheduledEventIcs)
 }
 
 // @Summary Creates a new event
@@ -1540,6 +1543,11 @@ func deleteEvent(c *gin.Context) {
 		}
 	}
 
+	// Remove the scheduled event from the owner's calendar
+	if event.ScheduledEventCalendarRef != nil {
+		deleteScheduledEventFromCalendar(user, event.ScheduledEventCalendarRef)
+	}
+
 	c.Status(http.StatusOK)
 }
 
@@ -1579,6 +1587,10 @@ func duplicateEvent(c *gin.Context) {
 	// Update event
 	event.Id = primitive.NewObjectID()
 	event.Name = payload.EventName
+	// The copy starts unscheduled
+	event.ScheduledEvent = nil
+	event.ScheduledEventCalendarRef = nil
+	event.CalendarEventId = ""
 	numResponses := 0
 	event.NumResponses = &numResponses
 	if *payload.CopyAvailability {
@@ -1900,6 +1912,7 @@ func stripSensitiveUserFields(user *models.User) {
 	}
 	user.CalendarAccounts = nil
 	user.CalendarOptions = nil
+	user.ScheduleCalendar = nil
 	user.StripeCustomerId = nil
 	user.PolarCustomerId = nil
 	user.PrimaryAccountKey = nil

@@ -1047,6 +1047,9 @@ import {
   timeNumToTimeString,
   isPremiumUser,
   prefersStartOnMonday,
+  getEventUrl,
+  getGoogleCalendarEventUrl,
+  getOutlookCalendarEventUrl,
 } from "@/utils"
 import {
   availabilityTypes,
@@ -3563,8 +3566,12 @@ export default {
       this.state = this.defaultState
     },
 
-    /** Redirect user to Google Calendar to finish the creation of the event */
-    confirmScheduleEvent(googleCalendar = true) {
+    /**
+     * Saves the dragged out time as the event's scheduled time, which also adds
+     * it to the owner's schedule calendar if one is set. target "google" or
+     * "outlook" additionally opens that calendar's event creation page.
+     */
+    confirmScheduleEvent(target = "save") {
       if (!this.curScheduledEvent) return
       // if (!isPremiumUser(this.authUser)) {
       //   this.showUpgradeDialog({
@@ -3602,46 +3609,64 @@ export default {
         endDate = dateToDowDate(this.event.dates, endDate, offset, true)
       }
 
-      // Format email string separated by commas
-      const emails = this.respondents.map((r) => {
-        // Return email if they are not a guest, otherwise return their name
-        if (r.email.length > 0) {
-          return r.email
-        } else {
-          // return `${r.firstName} (no email)`
-          return null
-        }
-      })
-      const emailsString = encodeURIComponent(emails.filter(Boolean).join(","))
-
-      const eventId = this.event.shortId ?? this.event._id
-
-      let url = ""
-      if (googleCalendar) {
-        // Format start and end date to be in the format required by gcal (remove -, :, and .000)
-        const start = startDate.toISOString().replace(/([-:]|\.000)/g, "")
-        const end = endDate.toISOString().replace(/([-:]|\.000)/g, "")
-
-        // Construct Google Calendar event creation template url
-        url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-          this.event.name
-        )}&dates=${start}/${end}&details=${encodeURIComponent(
-          `\n\nThis event was scheduled with Timeful: ${window.location.origin}/e/`
-        )}${eventId}&ctz=${this.curTimezone.value}&add=${emailsString}`
-      } else {
-        url = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(
-          this.event.name
-        )}&body=${encodeURIComponent(
-          `\n\nThis event was scheduled with Timeful: ${window.location.origin}/e/` +
-            eventId
-        )}&startdt=${startDate.toISOString()}&enddt=${endDate.toISOString()}&location=${encodeURIComponent(
-          this.event.location || ""
-        )}&path=/calendar/action/compose&timezone=${this.curTimezone.value}`
+      // Open the Google / Outlook page right away: browsers block popups that
+      // are opened after waiting for a request
+      if (target === "google" || target === "outlook") {
+        const details = `\n\nThis event was scheduled with Timeful: ${getEventUrl(
+          this.event
+        )}`
+        const url =
+          target === "google"
+            ? getGoogleCalendarEventUrl({
+                name: this.event.name,
+                startDate,
+                endDate,
+                details,
+                timezone: this.curTimezone.value,
+                // Respondents' emails (guests without an email are skipped)
+                emails: this.respondents.map((r) => r.email).filter(Boolean),
+              })
+            : getOutlookCalendarEventUrl({
+                name: this.event.name,
+                startDate,
+                endDate,
+                details,
+                location: this.event.location || "",
+                timezone: this.curTimezone.value,
+              })
+        window.open(url, "_blank")
       }
 
-      // Navigate to url and reset state
-      window.open(url, "_blank")
       this.state = this.defaultState
+      this.saveScheduledEvent(startDate, endDate)
+    },
+    /** Saves the scheduled time so respondents can see it */
+    async saveScheduledEvent(startDate, endDate) {
+      try {
+        const { calendarWrite } = await post(
+          `/events/${this.event._id}/schedule`,
+          {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+          }
+        )
+        this.refreshEvent()
+
+        if (calendarWrite?.status === "written") {
+          this.showInfo(
+            `Event scheduled and added to "${calendarWrite.calendarName}"`
+          )
+        } else if (calendarWrite?.status === "failed") {
+          this.showError(
+            `The event was scheduled, but it couldn't be added to "${calendarWrite.calendarName}". Please try again later.`
+          )
+        } else {
+          this.showInfo("Event scheduled!")
+        }
+      } catch (err) {
+        console.error(err)
+        this.showError("There was a problem scheduling the event!")
+      }
     },
     //#endregion
 

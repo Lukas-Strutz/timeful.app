@@ -31,6 +31,9 @@ type User struct {
 	// Calendar options
 	CalendarOptions *CalendarOptions `json:"calendarOptions" bson:"calendarOptions,omitempty"`
 
+	// Calendar that scheduled events are automatically added to
+	ScheduleCalendar *ScheduleCalendar `json:"scheduleCalendar" bson:"scheduleCalendar,omitempty"`
+
 	// Stripe customer ID
 	StripeCustomerId *string `json:"stripeCustomerId" bson:"stripeCustomerId,omitempty"`
 	// Polar customer ID

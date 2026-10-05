@@ -20,7 +20,8 @@ import (
 	"schej.it/server/utils"
 )
 
-const appleCaldavEndpoint = "https://caldav.icloud.com"
+// Variable so tests can point it at a local server
+var appleCaldavEndpoint = "https://caldav.icloud.com"
 
 type AppleCalendar struct {
 	models.AppleCalendarAuth
@@ -369,4 +370,65 @@ func parseTimeWithTZ(prop *ical.Prop) (time.Time, error) {
 	}
 
 	return t, nil
+}
+
+// PutEvent creates or replaces the event as <calendarId>/<fileName>. This is
+// a plain PUT rather than go-webdav's PutCalendarObject, which fails on
+// successful responses whose ETag header isn't a quoted string.
+func (calendar *AppleCalendar) PutEvent(calendarId string, fileName string, details ScheduledEventDetails) (string, error) {
+	httpClient, err := calendar.getHttpClient()
+	if err != nil {
+		return "", err
+	}
+
+	var body bytes.Buffer
+	if err := ical.NewEncoder(&body).Encode(NewScheduledEventCalendar(details)); err != nil {
+		return "", err
+	}
+
+	objectPath := strings.TrimSuffix(calendarId, "/") + "/" + fileName
+	req, err := http.NewRequest(http.MethodPut, appleCaldavEndpoint+objectPath, &body)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "text/calendar; charset=utf-8")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return "", fmt.Errorf("Apple Calendar returned status %d when saving the event", resp.StatusCode)
+	}
+
+	return objectPath, nil
+}
+
+// DeleteEvent removes an event written by PutEvent. objectId is its path.
+func (calendar *AppleCalendar) DeleteEvent(objectId string) error {
+	httpClient, err := calendar.getHttpClient()
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, appleCaldavEndpoint+objectId, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// Already deleted, e.g. by the user in Apple Calendar
+	if resp.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	if resp.StatusCode/100 != 2 {
+		return fmt.Errorf("Apple Calendar returned status %d when deleting the event", resp.StatusCode)
+	}
+
+	return nil
 }

@@ -81,3 +81,19 @@ type CalendarEvent struct {
 	// Whether the event is an all day event
 	AllDay bool `json:"allDay" bson:"allDay,omitempty"`
 }
+
+// ScheduleCalendar is the calendar that a user's scheduled events are
+// automatically added to
+type ScheduleCalendar struct {
+	CalendarAccountKey string `json:"calendarAccountKey" bson:"calendarAccountKey"`
+	CalendarId         string `json:"calendarId" bson:"calendarId"`
+}
+
+// ScheduledEventCalendarRef records where an event's scheduled time was
+// written in the owner's calendar, so it can be moved or removed later
+type ScheduledEventCalendarRef struct {
+	CalendarAccountKey string `bson:"calendarAccountKey"`
+	CalendarId         string `bson:"calendarId"`
+	// Provider specific id of the written event, e.g. the CalDAV object path
+	ObjectId string `bson:"objectId"`
+}
