@@ -23,6 +23,9 @@ import (
 // Variable so tests can point it at a local server
 var appleCaldavEndpoint = "https://caldav.icloud.com"
 
+// iCloud requests must not hang a request forever (http.DefaultClient has no timeout)
+var appleHttpClient = &http.Client{Timeout: 30 * time.Second}
+
 type AppleCalendar struct {
 	models.AppleCalendarAuth
 }
@@ -325,7 +328,7 @@ func (calendar *AppleCalendar) getHttpClient() (webdav.HTTPClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return webdav.HTTPClientWithBasicAuth(nil, calendar.Email, decryptedPassword), nil
+	return webdav.HTTPClientWithBasicAuth(appleHttpClient, calendar.Email, decryptedPassword), nil
 }
 
 func (calendar *AppleCalendar) getClients() (*webdav.Client, *caldav.Client, error) {
