@@ -15,6 +15,7 @@ func TestIcsContentDisposition(t *testing.T) {
 		{"Team dinner", `attachment; filename="Team dinner.ics"; filename*=UTF-8''Team%20dinner.ics`},
 		{"Grillen bei Jürgen", `attachment; filename="Grillen bei Jrgen.ics"; filename*=UTF-8''Grillen%20bei%20J%C3%BCrgen.ics`},
 		{`"; evil/../\name`, `attachment; filename="evil..name.ics"; filename*=UTF-8''evil..name.ics`},
+		{"Grillen – bei  Jürgen", `attachment; filename="Grillen bei Jrgen.ics"; filename*=UTF-8''Grillen%20bei%20J%C3%BCrgen.ics`},
 		{"🎉🎉", `attachment; filename="event.ics"; filename*=UTF-8''event.ics`},
 		{"", `attachment; filename="event.ics"; filename*=UTF-8''event.ics`},
 	}

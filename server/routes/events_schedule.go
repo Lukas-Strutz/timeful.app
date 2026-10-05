@@ -321,7 +321,8 @@ var nonAsciiChars = regexp.MustCompile(`[^\x20-\x7E]+`)
 // icsContentDisposition returns the Content-Disposition header for downloading
 // the event as "<event name>.ics", with an ASCII fallback for old browsers
 func icsContentDisposition(eventName string) string {
-	name := []rune(strings.TrimSpace(icsFileNameUnsafeChars.ReplaceAllString(eventName, "")))
+	// Strip unsafe characters, then collapse the whitespace they leave behind
+	name := []rune(strings.Join(strings.Fields(icsFileNameUnsafeChars.ReplaceAllString(eventName, "")), " "))
 	if len(name) > 80 {
 		name = name[:80]
 	}
@@ -330,7 +331,7 @@ func icsContentDisposition(eventName string) string {
 		fileName = "event"
 	}
 
-	asciiFileName := strings.TrimSpace(nonAsciiChars.ReplaceAllString(fileName, ""))
+	asciiFileName := strings.Join(strings.Fields(nonAsciiChars.ReplaceAllString(fileName, "")), " ")
 	if asciiFileName == "" {
 		asciiFileName = "event"
 	}
