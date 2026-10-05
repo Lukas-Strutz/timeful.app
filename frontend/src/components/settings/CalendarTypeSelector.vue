@@ -7,7 +7,11 @@
         >
         <v-card-text class="tw-p-0">
           <div class="tw-flex tw-flex-col tw-gap-2">
-            <v-btn block @click="$emit('addGoogleCalendar')">
+            <v-btn
+              v-if="googleAuthEnabled"
+              block
+              @click="$emit('addGoogleCalendar')"
+            >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -33,7 +37,11 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="$emit('addOutlookCalendar')">
+            <v-btn
+              v-if="outlookAuthEnabled"
+              block
+              @click="$emit('addOutlookCalendar')"
+            >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -83,6 +91,7 @@
 <script>
 import AppleCredentials from "@/components/calendar_permission_dialogs/AppleCredentials.vue"
 import ICSCredentials from "@/components/calendar_permission_dialogs/ICSCredentials.vue";
+import { isGoogleAuthEnabled, isOutlookAuthEnabled } from "@/utils"
 
 export default {
   name: "CalendarTypeSelector",
@@ -101,6 +110,8 @@ export default {
 
   data() {
     return {
+      googleAuthEnabled: isGoogleAuthEnabled(),
+      outlookAuthEnabled: isOutlookAuthEnabled(),
       states: {
         PICK_CALENDAR: "pick-calendar",
         APPLE_CREDENTIALS: "apple-credentials",

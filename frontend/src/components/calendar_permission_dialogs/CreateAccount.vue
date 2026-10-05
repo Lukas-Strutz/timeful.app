@@ -16,9 +16,19 @@
     </div>
     <div v-if="!authUser">
       <SignInGoogleBtn
+        v-if="googleAuthEnabled"
         @click="$emit('signInLinkApple')"
         class="tw-mb-3 tw-w-full"
       />
+      <v-btn
+        v-else
+        block
+        color="primary"
+        class="tw-mb-3"
+        :to="{ name: 'sign-in', query: { redirect: $route.fullPath } }"
+      >
+        Continue with Email
+      </v-btn>
       <div class="tw-text-center tw-text-xs tw-text-dark-gray">
         By continuing, you agree to our
         <router-link
@@ -55,12 +65,19 @@
 <script>
 import SignInGoogleBtn from "../SignInGoogleBtn.vue"
 import { mapState } from "vuex"
+import { isGoogleAuthEnabled } from "@/utils"
 
 export default {
   name: "CreateAccount",
 
   components: {
     SignInGoogleBtn,
+  },
+
+  data() {
+    return {
+      googleAuthEnabled: isGoogleAuthEnabled(),
+    }
   },
 
   computed: {

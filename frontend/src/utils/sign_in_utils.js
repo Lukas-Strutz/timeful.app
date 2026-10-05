@@ -1,5 +1,27 @@
-import { calendarTypes } from "@/constants"
+import { calendarTypes, errors } from "@/constants"
 import store from "@/store"
+
+/** Whether Google sign-in / calendar access is configured for this instance */
+export const isGoogleAuthEnabled = () =>
+  Boolean(process.env.VUE_APP_GOOGLE_CLIENT_ID)
+
+/** Whether Outlook sign-in / calendar access is configured for this instance */
+export const isOutlookAuthEnabled = () =>
+  Boolean(process.env.VUE_APP_MICROSOFT_CLIENT_ID)
+
+/**
+ * Returns a user-facing message for known errors from the email sign-in
+ * endpoints (check-email / send code), or null for unknown errors
+ */
+export const getEmailSignInErrorMessage = (err) => {
+  const errorCode = err?.parsed?.error
+  if (errorCode === errors.EmailNotAllowed) {
+    return "This email address can't sign in to this Timeful instance."
+  } else if (errorCode === errors.EmailSendFailed) {
+    return "We couldn't send the sign-in email. Please try again later."
+  }
+  return null
+}
 
 /** Redirects user to the correct google sign in page */
 export const signInGoogle = ({

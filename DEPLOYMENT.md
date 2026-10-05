@@ -103,7 +103,7 @@ Create `server/.env` from the template (`server/.env.template`).
 | ---------------- | --------------------------------------------------------------------------- |
 | `CLIENT_ID`      | Google OAuth client ID                                                      |
 | `CLIENT_SECRET`  | Google OAuth client secret                                                  |
-| `ENCRYPTION_KEY` | Key for encrypting sensitive data (generate with `openssl rand -base64 32`) |
+| `ENCRYPTION_KEY` | Key for encrypting sensitive data. Must be exactly 16, 24 or 32 characters (generate with `openssl rand -hex 16`) |
 | `SESSION_SECRET` | Session cookie encryption key (generate with `openssl rand -base64 32`)     |
 
 #### Optional — Payments
@@ -139,6 +139,19 @@ For local development, `polar listen http://localhost:3002/api/polar/webhook` fo
 | Variable       | Description                                                                                                          |
 | -------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `CORS_ORIGINS` | Comma-separated allowed origins (default: production domains). For local development, set to `http://localhost:8080` |
+
+#### Optional — Self-hosting
+
+| Variable              | Description                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| `BASE_URL`            | Public URL of your instance, used in generated links (default: `https://timeful.app`)               |
+| `AUTH_ALLOWED_EMAILS` | Comma-separated emails (`me@example.com`) or domains (`@example.com`) allowed to sign in (default: all) |
+| `SMTP_HOST`           | SMTP server. When set, sign-in codes are sent over SMTP instead of Listmonk                          |
+| `SMTP_PORT`           | SMTP port (default: `587`, STARTTLS)                                                                |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | SMTP credentials                                                                       |
+| `SMTP_FROM`           | Sender, e.g. `Timeful <noreply@example.com>`                                                        |
+
+Without a Google OAuth client the Google sign-in buttons are hidden, so email sign-in (SMTP) is the simplest way to get accounts on a self-hosted instance.
 
 #### Optional — Other Services
 

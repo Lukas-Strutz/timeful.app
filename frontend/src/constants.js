@@ -12,6 +12,8 @@ export const errors = Object.freeze({
   OtpExpired: "otp-expired",
   OtpInvalidCode: "otp-invalid-code",
   OtpTooManyAttempts: "otp-too-many-attempts",
+  EmailNotAllowed: "email-not-allowed",
+  EmailSendFailed: "email-send-failed",
 })
 
 // Auth types

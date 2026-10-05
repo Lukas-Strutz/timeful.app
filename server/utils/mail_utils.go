@@ -6,33 +6,66 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/gomail.v2"
 	"schej.it/server/logger"
 )
 
-// Send email to the given email
-func SendEmail(toEmail string, subject string, body string, contentType string) {
+// IsSmtpConfigured returns whether a generic SMTP server is configured via
+// SMTP_HOST. When it is, transactional emails (e.g. sign-in codes) are sent
+// over SMTP instead of through Listmonk.
+func IsSmtpConfigured() bool {
+	return os.Getenv("SMTP_HOST") != ""
+}
+
+// getEnvOr returns the value of the env variable key, or fallback if it is empty
+func getEnvOr(key string, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+// Send email to the given email.
+//
+// Uses SMTP_HOST, SMTP_PORT (default 587, STARTTLS), SMTP_USERNAME,
+// SMTP_PASSWORD and SMTP_FROM (e.g. "Timeful <noreply@example.com>"). For
+// backwards compatibility it falls back to Gmail with SCHEJ_EMAIL_ADDRESS and
+// GMAIL_APP_PASSWORD. If body is html, plainTextBody is attached as the text
+// alternative.
+func SendEmail(toEmail string, subject string, body string, contentType string, plainTextBody ...string) error {
 	if contentType == "" {
 		contentType = "text/plain"
 	}
 
-	appPassword := os.Getenv("GMAIL_APP_PASSWORD")
-	fromEmail := os.Getenv("SCHEJ_EMAIL_ADDRESS")
+	fromEmail := getEnvOr("SMTP_FROM", os.Getenv("SCHEJ_EMAIL_ADDRESS"))
+	host := getEnvOr("SMTP_HOST", "smtp.gmail.com")
+	username := getEnvOr("SMTP_USERNAME", os.Getenv("SCHEJ_EMAIL_ADDRESS"))
+	password := getEnvOr("SMTP_PASSWORD", os.Getenv("GMAIL_APP_PASSWORD"))
+	port, err := strconv.Atoi(getEnvOr("SMTP_PORT", "587"))
+	if err != nil {
+		return fmt.Errorf("invalid SMTP_PORT: %w", err)
+	}
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", fromEmail)
 	m.SetHeader("To", toEmail)
 	m.SetHeader("Subject", subject)
-	m.SetBody(contentType, body)
+	if len(plainTextBody) > 0 && plainTextBody[0] != "" {
+		m.SetBody("text/plain", plainTextBody[0])
+		m.AddAlternative(contentType, body)
+	} else {
+		m.SetBody(contentType, body)
+	}
 
-	d := gomail.NewDialer("smtp.gmail.com", 587, fromEmail, appPassword)
-
-	// Send the email to Bob, Cora and Dan.
+	d := gomail.NewDialer(host, port, username, password)
 	if err := d.DialAndSend(m); err != nil {
 		logger.StdErr.Println(err)
+		return err
 	}
+	return nil
 }
 
 func AddUserToMailchimp(email string, firstName string, lastName string) {

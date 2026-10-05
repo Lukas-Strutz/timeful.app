@@ -114,8 +114,13 @@ func PrintHttpResponse(resp *http.Response) {
 	resp.Body = io.NopCloser(bytes.NewBuffer(body))
 }
 
-// Returns the correct base url, based on whether we're on dev or prod
+// Returns the correct base url, based on whether we're on dev or prod.
+// Self-hosted instances set BASE_URL (e.g. https://timeful.example.com).
 func GetBaseUrl() string {
+	if baseUrl := strings.TrimRight(os.Getenv("BASE_URL"), "/"); baseUrl != "" {
+		return baseUrl
+	}
+
 	var baseUrl string
 	if IsRelease() {
 		baseUrl = "https://timeful.app"

@@ -33,6 +33,7 @@
           <v-card-text class="tw-flex tw-flex-col tw-items-center tw-pt-6">
             <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
               <v-btn
+                v-if="googleAuthEnabled"
                 block
                 @click="signIn(calendarTypes.GOOGLE)"
                 class="tw-bg-white"
@@ -50,6 +51,7 @@
                 </div>
               </v-btn>
               <v-btn
+                v-if="outlookAuthEnabled"
                 block
                 @click="signIn(calendarTypes.OUTLOOK)"
                 class="tw-bg-white"
@@ -67,7 +69,10 @@
                 </div>
               </v-btn>
 
-              <div class="tw-my-2 tw-flex tw-items-center tw-gap-3">
+              <div
+                v-if="googleAuthEnabled || outlookAuthEnabled"
+                class="tw-my-2 tw-flex tw-items-center tw-gap-3"
+              >
                 <v-divider />
                 <span class="tw-text-xs tw-text-gray">or</span>
                 <v-divider />
@@ -251,7 +256,14 @@
 
 <script>
 import { authTypes, calendarTypes } from "@/constants"
-import { post, signInGoogle, signInOutlook } from "@/utils"
+import {
+  post,
+  signInGoogle,
+  signInOutlook,
+  isGoogleAuthEnabled,
+  isOutlookAuthEnabled,
+  getEmailSignInErrorMessage,
+} from "@/utils"
 import { mapMutations } from "vuex"
 import Logo from "@/components/Logo.vue"
 
@@ -276,11 +288,26 @@ export default {
     upgradeRedirect() {
       return this.$route.query.redirect === "upgrade"
     },
+    /** Same-site path to return to after signing in, e.g. /e/abc123 */
+    pathRedirect() {
+      const redirect = this.$route.query.redirect
+      if (
+        typeof redirect === "string" &&
+        redirect.startsWith("/") &&
+        !redirect.startsWith("//") &&
+        !redirect.includes("\\")
+      ) {
+        return redirect
+      }
+      return null
+    },
   },
 
   data() {
     return {
       calendarTypes,
+      googleAuthEnabled: isGoogleAuthEnabled(),
+      outlookAuthEnabled: isOutlookAuthEnabled(),
       isSignUp: this.initialIsSignUp,
       step: "select",
       email: "",
@@ -342,7 +369,9 @@ export default {
           this.otpError = ""
         }
       } catch (err) {
-        this.emailError = "Something went wrong. Please try again."
+        this.emailError =
+          getEmailSignInErrorMessage(err) ??
+          "Something went wrong. Please try again."
       } finally {
         this.sending = false
       }
@@ -356,7 +385,9 @@ export default {
         this.otpCode = ""
         this.otpError = ""
       } catch (err) {
-        this.otpError = "Failed to send code. Please try again."
+        this.otpError =
+          getEmailSignInErrorMessage(err) ??
+          "Failed to send code. Please try again."
       } finally {
         this.sending = false
       }
@@ -373,7 +404,9 @@ export default {
         this.otpCode = ""
         this.otpError = ""
       } catch (err) {
-        this.otpError = "Failed to resend code. Please try again."
+        this.otpError =
+          getEmailSignInErrorMessage(err) ??
+          "Failed to resend code. Please try again."
       } finally {
         this.sending = false
       }
@@ -427,6 +460,10 @@ export default {
         } catch (e) {
           console.error(e)
         }
+      }
+      if (this.pathRedirect) {
+        this.$router.replace(this.pathRedirect)
+        return
       }
       this.$router.replace({ name: "home" })
     },

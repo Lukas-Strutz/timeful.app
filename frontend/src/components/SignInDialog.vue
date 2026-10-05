@@ -12,6 +12,7 @@
         <v-card-text class="tw-flex tw-flex-col tw-items-center">
           <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
             <v-btn
+              v-if="googleAuthEnabled"
               block
               @click="signIn(calendarTypes.GOOGLE)"
               class="tw-bg-white"
@@ -29,6 +30,7 @@
               </div>
             </v-btn>
             <v-btn
+              v-if="outlookAuthEnabled"
               block
               @click="signIn(calendarTypes.OUTLOOK)"
               class="tw-bg-white"
@@ -46,7 +48,10 @@
               </div>
             </v-btn>
 
-            <div class="tw-my-2 tw-flex tw-items-center tw-gap-3">
+            <div
+              v-if="googleAuthEnabled || outlookAuthEnabled"
+              class="tw-my-2 tw-flex tw-items-center tw-gap-3"
+            >
               <v-divider />
               <span class="tw-text-gray-500 tw-text-xs">or</span>
               <v-divider />
@@ -199,7 +204,12 @@
 
 <script>
 import { calendarTypes } from "@/constants"
-import { post } from "@/utils"
+import {
+  post,
+  isGoogleAuthEnabled,
+  isOutlookAuthEnabled,
+  getEmailSignInErrorMessage,
+} from "@/utils"
 
 export default {
   name: "SignInDialog",
@@ -209,6 +219,8 @@ export default {
   data() {
     return {
       calendarTypes,
+      googleAuthEnabled: isGoogleAuthEnabled(),
+      outlookAuthEnabled: isOutlookAuthEnabled(),
       step: "select",
       email: "",
       firstName: "",
@@ -260,7 +272,9 @@ export default {
           this.otpError = ""
         }
       } catch (err) {
-        this.emailError = "Something went wrong. Please try again."
+        this.emailError =
+          getEmailSignInErrorMessage(err) ??
+          "Something went wrong. Please try again."
       } finally {
         this.sending = false
       }
@@ -274,7 +288,9 @@ export default {
         this.otpCode = ""
         this.otpError = ""
       } catch (err) {
-        this.otpError = "Failed to send code. Please try again."
+        this.otpError =
+          getEmailSignInErrorMessage(err) ??
+          "Failed to send code. Please try again."
       } finally {
         this.sending = false
       }
@@ -291,7 +307,9 @@ export default {
         this.otpCode = ""
         this.otpError = ""
       } catch (err) {
-        this.otpError = "Failed to resend code. Please try again."
+        this.otpError =
+          getEmailSignInErrorMessage(err) ??
+          "Failed to resend code. Please try again."
       } finally {
         this.sending = false
       }

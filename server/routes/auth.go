@@ -4,6 +4,7 @@ package routes
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -66,7 +67,10 @@ func signIn(c *gin.Context) {
 	tokens := auth.GetTokensFromAuthCode(payload.Code, payload.Scope, utils.GetOrigin(c), payload.CalendarType)
 
 	user, err := signInHelper(c, tokens, models.WEB, payload.CalendarType, *payload.TimezoneOffset)
-	if err != nil {
+	if errors.Is(err, errEmailNotAllowed) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: errs.EmailNotAllowed})
+		return
+	} else if err != nil {
 		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
 		return
 	}
@@ -118,13 +122,19 @@ func signInMobile(c *gin.Context) {
 		payload.CalendarType,
 		payload.TimezoneOffset,
 	)
-	if err != nil {
+	if errors.Is(err, errEmailNotAllowed) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: errs.EmailNotAllowed})
+		return
+	} else if err != nil {
 		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{})
 }
+
+// errEmailNotAllowed is returned by signInHelper when the email is not in AUTH_ALLOWED_EMAILS
+var errEmailNotAllowed = errors.New(errs.EmailNotAllowed)
 
 // Helper function to sign user in with the given parameters from the google oauth route
 func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.TokenOriginType, calendarType models.CalendarType, timezoneOffset int) (models.User, error) {
@@ -170,6 +180,9 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 		picture = ""
 	}
 	email = utils.NormalizeEmail(email)
+	if !utils.IsEmailAllowed(email) {
+		return models.User{}, errEmailNotAllowed
+	}
 
 	primaryAccountKey := utils.GetCalendarAccountKey(email, calendarType)
 
@@ -345,6 +358,10 @@ func checkEmail(c *gin.Context) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	if !utils.IsEmailAllowed(email) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: errs.EmailNotAllowed})
+		return
+	}
 	isNewUser := db.GetUserByEmail(email) == nil
 
 	c.JSON(http.StatusOK, gin.H{"isNewUser": isNewUser})
@@ -366,6 +383,10 @@ func sendOtp(c *gin.Context) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	if !utils.IsEmailAllowed(email) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: errs.EmailNotAllowed})
+		return
+	}
 
 	// Delete any existing OTP codes for this email
 	db.OtpCodesCollection.DeleteMany(context.Background(), bson.M{"email": email})
@@ -383,6 +404,16 @@ func sendOtp(c *gin.Context) {
 		logger.StdErr.Panicln(err)
 	}
 
+	// Self-hosted instances can send the code over plain SMTP instead of Listmonk
+	if utils.IsSmtpConfigured() {
+		if err := sendOtpEmailSmtp(email, code); err != nil {
+			c.JSON(http.StatusInternalServerError, responses.Error{Error: errs.EmailSendFailed})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
 	otpTemplateId, err := strconv.Atoi(os.Getenv("LISTMONK_OTP_EMAIL_TEMPLATE_ID"))
 	if err != nil {
 		logger.StdErr.Panicln("LISTMONK_OTP_EMAIL_TEMPLATE_ID is not set or invalid")
@@ -393,6 +424,26 @@ func sendOtp(c *gin.Context) {
 	}, false, listmonk.EmailOptions{FromEmail: "Timeful <noreply@timeful.app>"})
 
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+// sendOtpEmailSmtp sends the sign-in code email over SMTP (see utils.SendEmail)
+func sendOtpEmailSmtp(email string, code string) error {
+	baseUrl := utils.GetBaseUrl()
+	subject := fmt.Sprintf("%s is your Timeful sign-in code", code)
+	plainText := fmt.Sprintf(
+		"Your Timeful sign-in code is: %s\n\nIt expires in 10 minutes. If you didn't try to sign in at %s, you can ignore this email.\n",
+		code, baseUrl,
+	)
+	html := fmt.Sprintf(
+		`<div style="font-family: sans-serif; font-size: 15px; color: #222;">
+<p>Your Timeful sign-in code is:</p>
+<p style="font-size: 28px; font-weight: bold; letter-spacing: 4px;">%s</p>
+<p>It expires in 10 minutes. If you didn't try to sign in at <a href="%s">%s</a>, you can ignore this email.</p>
+</div>`,
+		code, baseUrl, baseUrl,
+	)
+
+	return utils.SendEmail(email, subject, html, "text/html", plainText)
 }
 
 // @Summary Verifies an OTP code and signs the user in
@@ -415,6 +466,10 @@ func verifyOtp(c *gin.Context) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	if !utils.IsEmailAllowed(email) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: errs.EmailNotAllowed})
+		return
+	}
 
 	// Find the OTP document
 	var otpDoc models.OtpCode

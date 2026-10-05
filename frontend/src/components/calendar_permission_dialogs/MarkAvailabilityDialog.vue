@@ -16,7 +16,12 @@
             You can always manually edit after autofilling
           </div>
           <div class="tw-flex tw-flex-col tw-gap-2">
-            <v-btn block @click="autofillWithGcal" class="tw-bg-white">
+            <v-btn
+              v-if="googleAuthEnabled"
+              block
+              @click="autofillWithGcal"
+              class="tw-bg-white"
+            >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -42,7 +47,12 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="autofillWithOutlook" class="tw-bg-white">
+            <v-btn
+              v-if="outlookAuthEnabled"
+              block
+              @click="autofillWithOutlook"
+              class="tw-bg-white"
+            >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -116,7 +126,7 @@
 </template>
 
 <script>
-import { isPhone } from "@/utils"
+import { isPhone, isGoogleAuthEnabled, isOutlookAuthEnabled } from "@/utils"
 import { mapActions, mapState } from "vuex"
 import CalendarPermissionsCard from "./CalendarPermissionsCard"
 import CreateAccount from "./CreateAccount"
@@ -140,6 +150,8 @@ export default {
 
   data() {
     return {
+      googleAuthEnabled: isGoogleAuthEnabled(),
+      outlookAuthEnabled: isOutlookAuthEnabled(),
       states: {
         CHOICES: "choices", // present user with choice of automatic or manual
         GCAL_PERMISSIONS: "gcal_permissions", // present to user the gcal permissions we request
