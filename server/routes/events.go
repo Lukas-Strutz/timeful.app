@@ -87,6 +87,7 @@ func createEvent(c *gin.Context) {
 		When2meetHref            *string  `json:"when2meetHref"`
 		CollectEmails            *bool    `json:"collectEmails"`
 		TimeIncrement            *int     `json:"timeIncrement"`
+		Timezone                 *string  `json:"timezone"`
 
 		// Only for availability groups
 		Attendees []string `json:"attendees"`
@@ -135,6 +136,7 @@ func createEvent(c *gin.Context) {
 		When2meetHref:            payload.When2meetHref,
 		CollectEmails:            payload.CollectEmails,
 		TimeIncrement:            payload.TimeIncrement,
+		Timezone:                 payload.Timezone,
 		Type:                     payload.Type,
 		SignUpResponses:          make(map[string]*models.SignUpResponse),
 		NumResponses:             &numResponses,
@@ -275,6 +277,7 @@ func editEvent(c *gin.Context) {
 		Remindees                []string `json:"remindees"`
 		SendEmailAfterXResponses *int     `json:"sendEmailAfterXResponses"`
 		CollectEmails            *bool    `json:"collectEmails"`
+		Timezone                 *string  `json:"timezone"`
 
 		// Only for availability groups
 		Attendees []string `json:"attendees"`
@@ -325,9 +328,13 @@ func editEvent(c *gin.Context) {
 	event.SendEmailAfterXResponses = payload.SendEmailAfterXResponses
 	event.CollectEmails = payload.CollectEmails
 	event.Type = payload.Type
+	// Partial edits (e.g. description only) don't send a timezone, so keep the existing one
+	if payload.Timezone != nil {
+		event.Timezone = payload.Timezone
+	}
 
-	// Update remindees
-	if event.Type == models.DOW || event.Type == models.SPECIFIC_DATES {
+	// Update remindees. Partial edits (e.g. description only) don't send remindees, so leave them as is
+	if payload.Remindees != nil && (event.Type == models.DOW || event.Type == models.SPECIFIC_DATES) {
 		origRemindees := utils.Coalesce(event.Remindees)
 		updatedRemindees := make([]models.Remindee, 0)
 		added, removed, kept := utils.FindAddedRemovedKept(payload.Remindees, utils.Map(origRemindees, func(r models.Remindee) string { return r.Email }))
@@ -366,8 +373,8 @@ func editEvent(c *gin.Context) {
 		event.Remindees = &updatedRemindees
 	}
 
-	// Update attendees
-	if event.Type == models.GROUP {
+	// Update attendees. Partial edits (e.g. description only) don't send attendees, so leave them as is
+	if payload.Attendees != nil && event.Type == models.GROUP {
 		origAttendees := db.GetAttendees(event.Id.Hex())
 		added, removed, kept := utils.FindAddedRemovedKept(payload.Attendees, utils.Map(origAttendees, func(a models.Attendee) string { return a.Email }))
 
@@ -1903,7 +1910,7 @@ func shouldKeepGroupResponseUserEmails(event *models.Event, userSesh string, isO
 }
 
 // stripSensitiveUserFields removes fields from a User that should never be
-// exposed in the event page API response (calendar accounts, billing info, etc.).
+// exposed in the event page API response (calendar accounts, etc.).
 // Email is NOT stripped here as callers handle email visibility separately based
 // on the collectEmails setting and owner status.
 func stripSensitiveUserFields(user *models.User) {
@@ -1913,8 +1920,6 @@ func stripSensitiveUserFields(user *models.User) {
 	user.CalendarAccounts = nil
 	user.CalendarOptions = nil
 	user.ScheduleCalendar = nil
-	user.StripeCustomerId = nil
-	user.PolarCustomerId = nil
 	user.PrimaryAccountKey = nil
 }
 
