@@ -87,7 +87,8 @@ const router = new VueRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authRoutes = ["home", "settings"]
-  const noAuthRoutes = ["sign-in", "sign-up"]
+  // Signed-in users skip the start page and auth pages
+  const noAuthRoutes = ["landing", "sign-in", "sign-up"]
   try {
     await get("/auth/status")
 
