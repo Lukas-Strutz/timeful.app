@@ -131,6 +131,9 @@
             background-color="#f5f5f5"
             class="tw-mb-3"
           />
+          <div v-if="onboardingError" class="tw-mb-3 tw-text-sm tw-text-red">
+            {{ onboardingError }}
+          </div>
           <v-btn
             block
             color="primary"
@@ -228,6 +231,7 @@ export default {
       otpCode: "",
       emailError: "",
       otpError: "",
+      onboardingError: "",
       sending: false,
       verifying: false,
       isNewUser: false,
@@ -282,13 +286,14 @@ export default {
     async submitOnboarding() {
       if (!this.firstName.trim() || this.sending) return
       this.sending = true
+      this.onboardingError = ""
       try {
         await this.sendOtpEmail()
         this.step = "otp"
         this.otpCode = ""
         this.otpError = ""
       } catch (err) {
-        this.otpError =
+        this.onboardingError =
           getEmailSignInErrorMessage(err) ??
           "Failed to send code. Please try again."
       } finally {
@@ -364,6 +369,7 @@ export default {
       this.otpCode = ""
       this.emailError = ""
       this.otpError = ""
+      this.onboardingError = ""
       this.sending = false
       this.verifying = false
       this.isNewUser = false
